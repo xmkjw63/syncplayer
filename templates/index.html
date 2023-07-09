@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Plyr在线视频播放器</title>
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.6.2/plyr.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding-top: 50px;
+            text-align: center;
+        }
+
+        .btn-group {
+            margin-top: 20px;
+        }
+
+        .chat-container {
+            margin-top: 20px;
+        }
+
+        .chat-messages {
+            max-height: 300px;
+            overflow-y: scroll;
+        }
+
+        .sync-button {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <video id="player" playsinline controls>
+            <source src="https://mingqwq.com/1189352132-1-192.mp4" type="video/mp4">
+        </video>
+
+        <div class="btn-group">
+            <button id="play-button" class="btn btn-primary">播放</button>
+            <button id="pause-button" class="btn btn-primary">暂停</button>
+        </div>
+
+        <div class="sync-button">
+            <button id="sync-button" class="btn btn-primary">手动同步</button>
+        </div>
+
+        <div class="chat-container">
+            <h2>聊天室</h2>
+            <div class="chat-messages" id="chat-messages"></div>
+            <div class="input-group mt-3">
+                <input type="text" class="form-control" id="message-input" placeholder="请输入消息">
+                <button class="btn btn-primary" id="send-button">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.plyr.io/3.6.2/plyr.polyfilled.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.1/socket.io.min.js"></script>
+    <script>
+        var player = new Plyr('#player');
+        var playButton = document.getElementById('play-button');
+        var pauseButton = document.getElementById('pause-button');
+        var syncButton = document.getElementById('sync-button');
+        var chatMessages = document.getElementById('chat-messages');
+        var messageInput = document.getElementById('message-input');
+        var sendButton = document.getElementById('send-button');
+
+        var socket = io();
+
+        // 监听播放状态事件
+        socket.on('play_state', function (playState) {
+            player.currentTime = playState.current_time;
+            if (playState.is_playing) {
+                player.play();
+            } else {
+                player.pause();
+            }
+        });
+
+        // 监听播放事件
+        player.on('play', function () {
+            var data = {
+                current_time: player.currentTime
+            };
+            socket.emit('play', data);
+        });
+
+        // 监听暂停事件
+        player.on('pause', function () {
+            var data = {
+                current_time: player.currentTime
+            };
+            socket.emit('pause', data);
+        });
+
+        // 监听聊天消息事件
+        socket.on('chat_messages', function (messages) {
+            renderChatMessages(messages);
+        });
+
+        // 监听发送按钮点击事件
+        sendButton.addEventListener('click', function () {
+            var username = '用户'; // 可以根据需求修改用户名的获取方式
+            var message = messageInput.value;
+            if (message.trim() !== '') {
+                var data = {
+                    username: username,
+                    message: message
+                };
+                socket.emit('send_message', data);
+                messageInput.value = '';
+            }
+        });
+
+        // 监听手动同步按钮点击事件
+        syncButton.addEventListener('click', function () {
+            var data = {
+                current_time: player.currentTime
+            };
+            socket.emit('sync', data);
+        });
+
+        // 监听播放按钮点击事件
+        playButton.addEventListener('click', function () {
+            if (player.playing) {
+                player.pause();
+            } else {
+                player.play();
+            }
+        });
+
+        // 监听暂停按钮点击事件
+        pauseButton.addEventListener('click', function () {
+            player.pause();
+        });
+
+        // 渲染聊天消息
+        function renderChatMessages(messages) {
+            var html = '';
+            for (var i = 0; i < messages.length; i++) {
+                var message = messages[i];
+                html += '<p><strong>' + message.username + ':</strong> ' + message.message + '</p>';
+            }
+            chatMessages.innerHTML = html;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    </script>
+</body>
+
+</html>
